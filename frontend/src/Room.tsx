@@ -18,15 +18,14 @@ function Room() {
   const { previousAction } = location.state || {}
   const [gameState, setGameState] = useState<GameState>(GameState.LOBBY)
   const [playerId, setPlayerId] = useState(0)
-  const [audioUrl, setAudioUrl] = useState<null | string>()
+  const [audioUrl, setAudioUrl] = useState<string>("")
 
   console.log(previousAction)
   useEffect(() => {
-    if (previousAction != "create") {
+    if (previousAction != "create" && websocket) {
         websocket.send(JSON.stringify({ action: "join", roomId: roomCode }));
     }
-
-}, [])
+}, [websocket, previousAction, roomCode])
 
   useEffect(() => {
     if (!websocket) {
@@ -36,7 +35,7 @@ function Room() {
   
 
      // Convert Base64 to a binary Blob
-    function base64ToBlob(base64, mimeType) {
+    function base64ToBlob(base64: string, mimeType: string): Blob {
         const byteCharacters = atob(base64); // Decode Base64 string
         const byteNumbers = Array.from(byteCharacters).map(char => char.charCodeAt(0));
         const byteArray = new Uint8Array(byteNumbers);
@@ -44,7 +43,7 @@ function Room() {
       }
       
 
-    websocket.onmessage = (e) => {
+    websocket.onmessage = (e: MessageEvent) => {
       const res = JSON.parse(e.data);
       console.log("Message from server:", res);
       const state = res.action
@@ -85,17 +84,21 @@ function Room() {
     websocket.send(JSON.stringify({ action: "start", roomId: roomCode }));
   };
 
-  const handleSubmitRecording = () => {
+  const handleSubmitRecording = (base64Audio: string) => {
     if (!websocket) {
         console.error("WebSocket is not available.")
         return
     }
     const req = {
-        action: "turn",
+        action: "recording",
+        roomId: roomCode,
         playerId: playerId,
-        audio: "blob"
+        audio: base64Audio
     }
-    websocket.send(JSON.stringify(req))
+    console.log("Sending recording to websocket:", req);
+    websocket.send(JSON.stringify(req));
+    console.log("Sent recording to websocket:", req);
+
   }
 
   return (
@@ -110,7 +113,7 @@ function Room() {
         {gameState === GameState.RECORDING && 
         <>
             <h1>ur turn</h1>
-            <Piano />
+            <Piano onRecordingComplete={handleSubmitRecording} />
             <audio src={audioUrl} controls></audio>
         </>}
         {gameState === GameState.END && <h1>What is the song?</h1>}

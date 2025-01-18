@@ -5,7 +5,11 @@ interface AudioNodes {
     gain: GainNode;
 }
 
-const Piano: React.FC = () => {
+interface PianoProps {
+    onRecordingComplete: (base64Audio: string) => void;
+}
+
+const Piano: React.FC<PianoProps> = ({ onRecordingComplete }) => {
     const audioContextRef = useRef<AudioContext | null>(null);
     const activeNotesRef = useRef<Map<string, AudioNodes>>(new Map());
     const [activeKeys, setActiveKeys] = useState<Set<string>>(new Set());
@@ -58,6 +62,7 @@ const Piano: React.FC = () => {
                 const base64 = await blobToBase64(blob);
                 setBase64Audio(base64);
                 console.log('Recording converted to base64');
+                onRecordingComplete(base64);
             } catch (error) {
                 console.error('Failed to convert recording:', error);
             }

@@ -1,8 +1,12 @@
-import React, { createContext, useContext, useMemo } from 'react';
+import React, { createContext, useContext, useMemo, ReactNode } from 'react';
 
-const WebSocketContext = createContext(null);
+const WebSocketContext = createContext<WebSocket | null>(null);
 
-export const WebSocketProvider = ({ children }) => {
+interface WebSocketProviderProps {
+  children: ReactNode;
+}
+
+export const WebSocketProvider = ({ children }: WebSocketProviderProps) => {
   const websocket = useMemo(() => new WebSocket('ws://206.189.40.120:8080/ws'), []);
 
   websocket.onopen = () => {
