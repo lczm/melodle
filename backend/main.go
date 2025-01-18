@@ -125,7 +125,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			if !exists {
 				conn.WriteJSON(map[string]string{
 					"action":  "error",
-					"message": "Room not found",
+					"message": "Room not found from ready",
 				})
 				continue
 			}
@@ -151,7 +151,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			if !exists {
 				conn.WriteJSON(map[string]string{
 					"action":  "error",
-					"message": "Room not found",
+					"message": "Room not found from join",
 				})
 				continue
 			}
@@ -179,7 +179,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			if !exists {
 				conn.WriteJSON(map[string]string{
 					"action":  "error",
-					"message": "Room not found",
+					"message": "Room not found from start",
 				})
 				continue
 			}
