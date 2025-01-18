@@ -69,7 +69,7 @@ function Room() {
             break
       }
     };
-  }, [websocket, roomCode, playerId]);
+  }, [websocket, roomCode]);
 
   const handleStart = () => {
     if (!websocket) {
