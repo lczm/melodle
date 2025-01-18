@@ -1,38 +1,39 @@
-import { useState } from "react";
-import "./App.css";
+import { useEffect } from "react";
+import { useWebSocket } from "./websocket";
 import { useParams } from "react-router-dom";
 
 function Room() {
-  const { roomCode } = useParams()
-  const reqBody = {
-    "action": "join",
-    "roomId": roomCode
-  }
+  const { roomCode } = useParams();
+  const websocket = useWebSocket();
 
-  const url = "http://206.189.40.120:8080/ws"
+  useEffect(() => {
+    if (!websocket) {
+      console.error("WebSocket is not available.");
+      return;
+    }
 
-  const connectToRoom = async () => {
-    const res = await fetch(url, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify(reqBody)
-      })
+    websocket.send(JSON.stringify({ action: "join", roomId: roomCode }));
 
-      if (!res.ok) {
-        throw new Error(`gg error: ${res.status}`)
-      }
-      const resData = await res.json()
-      console.log(resData)
-  }
+    websocket.onmessage = (e) => {
+      const res = JSON.parse(e.data);
+      console.log("Message from server:", res);
+    };
+  }, [websocket, roomCode]);
 
-  connectToRoom()
+  const handleStart = () => {
+    if (!websocket) {
+      console.error("WebSocket is not available.");
+      return;
+    }
+    websocket.send(JSON.stringify({ action: "start", roomId: roomCode }));
+  };
 
-  return <>
-   
-  
-  </>;
+  return (
+    <div>
+      <h1>Room Code: {roomCode}</h1>
+      <button onClick={handleStart}>Start Game</button>
+    </div>
+  );
 }
 
 export default Room;

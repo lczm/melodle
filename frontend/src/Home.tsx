@@ -10,8 +10,23 @@ function Home() {
     console.log(code);
     navigate(`/room/${code}`)
   };
+  const createRoom = () : void => {
+    const url = "ws://206.189.40.120:8080/ws"  
+    const ws = new WebSocket(url)
+    ws.onopen = () => {
+      ws.send(JSON.stringify({"action": "create"}))
+    }
+    ws.onmessage = (e) => {
+      console.log(e.data)
+      const res = JSON.parse(e.data)
+      if (res.action == "created") {
+        navigate(`/room/${res.roomId}`, { state: {ws}})
+      }
+
+    }
+  }
   return <>
-     <input
+              <input
                 id="code"
                 required
                 placeholder="Code"
@@ -26,6 +41,14 @@ function Home() {
               >
                 Enter
               </button>
+
+              <button
+              onClick={createRoom}
+              className="flex-none rounded-md bg-indigo-500 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
+              
+              
+              >Create Room</button>
+
   
   
   </>;
