@@ -117,6 +117,11 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 		case "ready":
 			room, exists := rooms[msg.RoomID]
+			fmt.Println("@@@")
+			fmt.Println(msg.RoomID)
+			fmt.Println("@@@")
+			fmt.Println(rooms)
+			fmt.Println("@@@")
 			if !exists {
 				conn.WriteJSON(map[string]string{
 					"action":  "error",
