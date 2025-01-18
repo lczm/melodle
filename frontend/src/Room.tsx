@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useWebSocket } from "./WebSocketContext";
 import { useLocation, useParams } from "react-router-dom";
+import Piano from "./Piano.tsx";
 
 enum GameState {
     LOBBY,  
@@ -26,7 +27,7 @@ function Room() {
     }
 
      // Convert Base64 to a binary Blob
-     function base64ToBlob(base64, mimeType) {
+    function base64ToBlob(base64, mimeType) {
         const byteCharacters = atob(base64); // Decode Base64 string
         const byteNumbers = Array.from(byteCharacters).map(char => char.charCodeAt(0));
         const byteArray = new Uint8Array(byteNumbers);
@@ -60,10 +61,9 @@ function Room() {
 
             } else {
                 setGameState(GameState.WAITING)
-           
             }
             break;
- 
+
         case "end":
             setGameState(GameState.END)
             break
@@ -94,16 +94,17 @@ function Room() {
 
   return (
     <div>
-         <h2>You are: Player {playerId}</h2>
+        <h2>You are: Player {playerId}</h2>
         {gameState === GameState.LOBBY && <> <h1>Room Code: {roomCode}</h1>
         <button onClick={handleStart}>Start Game</button></>}
-        {gameState === GameState.WAITING && <>
-           
+        {gameState === GameState.WAITING && 
+        <>
             <h1>Please wait for your turn...</h1>
-        </> }
+        </>}
         {gameState === GameState.RECORDING && 
         <>
             <h1>ur turn</h1>
+            <Piano />
             <audio src={audioUrl} controls></audio>
         </>}
         {gameState === GameState.END && <h1>What is the song?</h1>}
