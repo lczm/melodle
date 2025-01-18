@@ -1,10 +1,12 @@
 package main
 
 import (
+	"encoding/base64"
 	"fmt"
 	"log"
 	"math/rand"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -23,8 +25,6 @@ type Room struct {
 // Turn message signals the turn of the next player with given player id..
 // Frontend shall present audio recording to the next player.
 type TurnMsg struct {
-	// Shall be "turn"
-	Action string `json:"action"`
 	// Current Player's Id.
 	PlayerId int `json:"playerId"`
 	// Base64 encoded audio recording MP3 to play to the player
@@ -43,6 +43,7 @@ type RecordingMsg struct {
 }
 
 var (
+	songs    = make([]string, 1)
 	rooms    = make(map[string]*Room)
 	upgrader = websocket.Upgrader{
 		ReadBufferSize:  1024,
@@ -81,8 +82,10 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	for {
 		var msg struct {
-			Action string `json:"action"`
-			RoomID string `json:"roomId"`
+			Action   string  `json:"action"`
+			RoomID   string  `json:"roomId"`
+			PlayerId *int    `json:"playerId,omitempty"`
+			Audio    *string `json:"audio,omitempty"`
 		}
 
 		if err := conn.ReadJSON(&msg); err != nil {
@@ -201,6 +204,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			shuffleArray(numbers)
 
 			// Broadcast game start to all clients with a random playerId
+			room.mu.Lock()
 			index := 0
 			for client := range room.Clients {
 				client.WriteJSON(map[string]interface{}{
@@ -209,6 +213,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 				})
 				index++
 			}
+			room.mu.Unlock()
 		}
 	}
 }
@@ -221,4 +226,12 @@ func main() {
 	if err := http.ListenAndServe(port, nil); err != nil {
 		log.Fatal("ListenAndServe error:", err)
 	}
+
+	// read song into base64 string
+	songPath := os.Args[1]
+	songBytes, err := os.ReadFile(songPath)
+	if err != nil {
+		log.Fatal("Failed to read songPath: ", err)
+	}
+	songs = append(songs, base64.RawStdEncoding.EncodeToString(songBytes))
 }
