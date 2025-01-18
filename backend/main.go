@@ -19,6 +19,11 @@ type Room struct {
 	mu      sync.Mutex
 }
 
+type Player struct {
+	ID    string `json:"id"`
+	Ready bool   `json:"ready"`
+}
+
 var (
 	rooms    = make(map[string]*Room)
 	upgrader = websocket.Upgrader{
@@ -132,6 +137,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 					"action":     "readyUpdate",
 					"readyCount": readyCount,
 					"totalCount": totalCount,
+					"clients":    room.Clients,
 				})
 			}
 
