@@ -19,6 +19,7 @@ function Room() {
   const [gameState, setGameState] = useState<GameState>(GameState.LOBBY)
   const [playerId, setPlayerId] = useState(0)
   const [audioUrl, setAudioUrl] = useState<string>("")
+  const [audioList, setAudioList] = useState<string[]>([])
 
   console.log(previousAction)
   useEffect(() => {
@@ -71,6 +72,11 @@ function Room() {
 
         case "end":
             setGameState(GameState.END)
+            const audioUrls = res.audios.map((audio: string) => {
+                const audioBlob = base64ToBlob(audio, "audio/mpeg");
+                return URL.createObjectURL(audioBlob);
+            }).reverse();
+            setAudioList(audioUrls);
             break
       }
     };
@@ -95,10 +101,7 @@ function Room() {
         playerId: playerId,
         audio: base64Audio
     }
-    console.log("Sending recording to websocket:", req);
-    websocket.send(JSON.stringify(req));
-    console.log("Sent recording to websocket:", req);
-
+    websocket.send(JSON.stringify(req))
   }
 
   return (
@@ -116,8 +119,19 @@ function Room() {
             <Piano onRecordingComplete={handleSubmitRecording} />
             <audio src={audioUrl} controls></audio>
         </>}
-        {gameState === GameState.END && <h1>What is the song?</h1>}
-    
+        {gameState === GameState.END && 
+            <>
+                <h1>What is the song?</h1>
+                <div className="audio-list">
+                    {audioList.map((url, index) => (
+                        <div key={index}>
+                            <p>Recording {index + 1}:</p>
+                            <audio src={url} controls />
+                        </div>
+                    ))}
+                </div>
+            </>
+        }
     </div>
   );
 }
