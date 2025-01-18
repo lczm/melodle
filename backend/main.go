@@ -16,7 +16,6 @@ import (
 type Room struct {
 	ID      string
 	Clients map[*websocket.Conn]bool
-	Ready   map[*websocket.Conn]bool
 	mu      sync.Mutex
 }
 
@@ -36,7 +35,6 @@ func createRoom() string {
 	rooms[id] = &Room{
 		ID:      id,
 		Clients: make(map[*websocket.Conn]bool),
-		Ready:   make(map[*websocket.Conn]bool),
 	}
 	return id
 }
@@ -74,27 +72,16 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			debugInfo := make(map[string]interface{})
 			roomList := make([]map[string]interface{}, 0)
 
-			for roomID, room := range rooms {
+			for _, room := range rooms {
 				room.mu.Lock()
 				clientList := make([]map[string]interface{}, 0)
 
 				for client := range room.Clients {
 					clientInfo := map[string]interface{}{
 						"address": client.RemoteAddr().String(),
-						"isHost":  client == room.Host,
-						"ready":   room.Ready[client],
 					}
 					clientList = append(clientList, clientInfo)
 				}
-
-				roomInfo := map[string]interface{}{
-					"roomId":       roomID,
-					"totalClients": len(room.Clients),
-					"readyClients": len(room.Ready),
-					"hostAddress":  room.Host.RemoteAddr().String(),
-					"clients":      clientList,
-				}
-				roomList = append(roomList, roomInfo)
 				room.mu.Unlock()
 			}
 
@@ -112,7 +99,6 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			room.mu.Lock()
 			room.Clients[conn] = true
 			// The room host, only the host can start the game
-			room.Host = conn
 			room.mu.Unlock()
 
 			conn.WriteJSON(map[string]string{
