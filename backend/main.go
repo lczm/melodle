@@ -72,7 +72,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			debugInfo := make(map[string]interface{})
 			roomList := make([]map[string]interface{}, 0)
 
-			for _, room := range rooms {
+			for roomID, room := range rooms {
 				room.mu.Lock()
 				clientList := make([]map[string]interface{}, 0)
 
@@ -82,6 +82,13 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 					}
 					clientList = append(clientList, clientInfo)
 				}
+
+				roomInfo := map[string]interface{}{
+					"roomId":       roomID,
+					"totalClients": len(room.Clients),
+					"clients":      clientList,
+				}
+				roomList = append(roomList, roomInfo)
 				room.mu.Unlock()
 			}
 
