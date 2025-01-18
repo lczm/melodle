@@ -18,32 +18,21 @@ import (
 type Room struct {
 	ID      string
 	Clients map[*websocket.Conn]bool
-	mu      sync.Mutex
+	Turns   []int
+	// current turn index
+	Turn int
+	// recordings from players
+	Recordings [][]byte
+	mu         sync.Mutex
 }
 
-// Messages
-// Turn message signals the turn of the next player with given player id..
-// Frontend shall present audio recording to the next player.
-type TurnMsg struct {
-	// Current Player's Id.
-	PlayerId int `json:"playerId"`
-	// Base64 encoded audio recording MP3 to play to the player
-	Audio string `json:"audio"`
-}
-
-// Recording message is sent by current player (current turn) to submit their recording.
-type RecordingMsg struct {
-	// Shall be "recording"
-	Action string `json:"action"`
-	// Player Id of the player submitting the recording.
-	// Message will be ignored if its not currently the player's turn.
-	PlayerId int `json:"playerId"`
-	// Base64 encoded audio MP3 recording submitted by the player
-	Audio string `json:"audio"`
+type Song struct {
+	Title string
+	Audio []byte
 }
 
 var (
-	songs    = make([]string, 1)
+	songs    = make([]Song, 0, 1)
 	rooms    = make(map[string]*Room)
 	upgrader = websocket.Upgrader{
 		ReadBufferSize:  1024,
@@ -70,6 +59,20 @@ func shuffleArray(arr []int) {
 		j := r.Intn(i + 1)
 		arr[i], arr[j] = arr[j], arr[i]
 	}
+}
+
+// Broadcast turn message to all clients in a room with audio
+func broadcastTurn(room *Room, audio []byte) {
+	// Broadcast game start using first "turn" message
+	room.mu.Lock()
+	for client := range room.Clients {
+		client.WriteJSON(map[string]interface{}{
+			"action":   "turn",
+			"playerId": room.Turns[room.Turn],
+			"audio":    base64.RawStdEncoding.EncodeToString(audio),
+		})
+	}
+	room.mu.Unlock()
 }
 
 func handleWebSocket(w http.ResponseWriter, r *http.Request) {
@@ -134,9 +137,10 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			// The room host, only the host can start the game
 			room.mu.Unlock()
 
-			conn.WriteJSON(map[string]string{
-				"action": "created",
-				"roomId": roomID,
+			conn.WriteJSON(map[string]interface{}{
+				"action":   "created",
+				"roomId":   roomID,
+				"playerId": 0,
 			})
 
 		case "join":
@@ -158,14 +162,15 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 
+			conn.WriteJSON(map[string]interface{}{
+				"action":   "joined",
+				"roomId":   msg.RoomID,
+				"playerId": len(room.Clients),
+			})
+
 			room.mu.Lock()
 			room.Clients[conn] = true
 			room.mu.Unlock()
-
-			conn.WriteJSON(map[string]string{
-				"action": "joined",
-				"roomId": msg.RoomID,
-			})
 
 		case "start":
 			room, exists := rooms[msg.RoomID]
@@ -199,21 +204,13 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 
-			// Create and shuffle the array
-			numbers := []int{1, 2, 3}
-			shuffleArray(numbers)
+			// Create and shuffle the turn array
+			room.Turns = []int{0, 1, 2}
+			room.Turn = 0
+			shuffleArray(room.Turns)
 
-			// Broadcast game start to all clients with a random playerId
-			room.mu.Lock()
-			index := 0
-			for client := range room.Clients {
-				client.WriteJSON(map[string]interface{}{
-					"action":   "turn",
-					"playerId": numbers[index],
-				})
-				index++
-			}
-			room.mu.Unlock()
+			// Broadcast game start using first "turn" message with initial song
+			broadcastTurn(room, songs[0].Audio)
 		}
 	}
 }
@@ -221,17 +218,17 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 func main() {
 	http.HandleFunc("/ws", handleWebSocket)
 
+	// read song into base64 string
+	songTitle := os.Args[1]
+	songBytes, err := os.ReadFile(os.Args[2])
+	if err != nil {
+		log.Fatal("Failed to read songPath: ", err)
+	}
+	songs = append(songs, Song{songTitle, songBytes})
+
 	port := ":8080"
 	fmt.Printf("Server starting on %s\n", port)
 	if err := http.ListenAndServe(port, nil); err != nil {
 		log.Fatal("ListenAndServe error:", err)
 	}
-
-	// read song into base64 string
-	songPath := os.Args[1]
-	songBytes, err := os.ReadFile(songPath)
-	if err != nil {
-		log.Fatal("Failed to read songPath: ", err)
-	}
-	songs = append(songs, base64.RawStdEncoding.EncodeToString(songBytes))
 }
