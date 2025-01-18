@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useWebSocket } from "./WebSocketContext";
-import { useParams } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 
 enum GameState {
     LOBBY,  
@@ -13,8 +13,11 @@ enum GameState {
 function Room() {
   const { roomCode } = useParams();
   const websocket = useWebSocket();
+  const location = useLocation();
+  const { previousAction } = location.state || {}
   const [gameState, setGameState] = useState<GameState>(GameState.LOBBY)
-  const [playerId, setPlayerId] = useState()
+  const [playerId, setPlayerId] = useState(0)
+  const [audioUrl, setAudioUrl] = useState<null | string>()
 
   useEffect(() => {
     if (!websocket) {
@@ -22,33 +25,51 @@ function Room() {
       return;
     }
 
-    websocket.send(JSON.stringify({ action: "join", roomId: roomCode }));
+     // Convert Base64 to a binary Blob
+     function base64ToBlob(base64, mimeType) {
+        const byteCharacters = atob(base64); // Decode Base64 string
+        const byteNumbers = Array.from(byteCharacters).map(char => char.charCodeAt(0));
+        const byteArray = new Uint8Array(byteNumbers);
+        return new Blob([byteArray], { type: mimeType });
+      }
+      console.log(previousAction)
+      if (previousAction != "create") {
+          websocket.send(JSON.stringify({ action: "join", roomId: roomCode }));
+    }
 
     websocket.onmessage = (e) => {
       const res = JSON.parse(e.data);
       console.log("Message from server:", res);
-      switch (res.action) {
+      const state = res.action
+      console.log(`Current state: ${state}`)
+      switch (state) {
+        case "joined":
+            setPlayerId(res.playerId)
+            break;
+
         case "turn":
             console.log(`turn`)
-            console.log(res)
-            setPlayerId(res.playerId)
-            setGameState(GameState.WAITING)
-        
-            break;
-        case "recording":
-            if (res.playerId != playerId) {
-                console.log(`It's not your turn. It's ${res.playerId}'s turn`)
-                return
+            console.log(`Currently recording: ${res.playerId}`)
+            console.log(`You are: ${playerId}`)
+            if (playerId === res.playerId) {
+                setGameState(GameState.RECORDING)
+                const aud = res.audio
+                const audioBlob = base64ToBlob(aud, "audio/mpeg");
+                const url = URL.createObjectURL(audioBlob);
+                setAudioUrl(url);
+
+            } else {
+                setGameState(GameState.WAITING)
+           
             }
-            setGameState(GameState.RECORDING)
-            const audioBlob = res.audio
             break;
+ 
         case "end":
             setGameState(GameState.END)
             break
       }
     };
-  }, [websocket, roomCode]);
+  }, [websocket, roomCode, playerId]);
 
   const handleStart = () => {
     if (!websocket) {
@@ -73,14 +94,18 @@ function Room() {
 
   return (
     <div>
+         <h2>You are: Player {playerId}</h2>
         {gameState === GameState.LOBBY && <> <h1>Room Code: {roomCode}</h1>
         <button onClick={handleStart}>Start Game</button></>}
         {gameState === GameState.WAITING && <>
-            <h2>You are: Player {playerId}</h2>
+           
             <h1>Please wait for your turn...</h1>
         </> }
-        {gameState === GameState.RECORDING && <><h1>ur turn</h1>
-            </>}
+        {gameState === GameState.RECORDING && 
+        <>
+            <h1>ur turn</h1>
+            <audio src={audioUrl} controls></audio>
+        </>}
         {gameState === GameState.END && <h1>What is the song?</h1>}
     
     </div>

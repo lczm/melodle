@@ -11,7 +11,7 @@ function Home() {
 
   const handleClick = (): void => {
     console.log(code);
-    navigate(`/room/${code}`)
+    navigate(`/room/${code}`, {state: {previousAction: "join"}})
   };
   const createRoom = () : void => {
     // const url = "ws://206.189.40.120:8080/ws"  
@@ -22,7 +22,7 @@ function Home() {
       console.log(e.data)
       const res = JSON.parse(e.data)
       if (res.action == "created") {
-        navigate(`/room/${res.roomId}`)
+        navigate(`/room/${res.roomId}`, {state: {previousAction: "create"}})
       }
     }
   }
