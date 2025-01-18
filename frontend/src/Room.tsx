@@ -107,7 +107,7 @@ function Room() {
         <>
             <h1>Please wait for your turn...</h1>
         </>}
-        {gameState === GameState.RECORDING && 
+        {gameState === GameState.LOBBY && 
         <>
             <h1>ur turn</h1>
             <Piano />
