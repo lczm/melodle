@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/google/uuid"
@@ -28,7 +29,7 @@ var (
 )
 
 func createRoom() string {
-	id := uuid.New().String()[:4] // Get first 4 characters of UUID
+	id := strings.ToUpper(uuid.New().String()[:4]) // Get first 4 characters of UUID
 	rooms[id] = &Room{
 		ID:      id,
 		Clients: make(map[*websocket.Conn]bool),
