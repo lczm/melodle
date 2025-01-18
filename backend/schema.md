@@ -11,7 +11,7 @@ After the room is created, the server will **broadcast** back to the host.
 ```
 {
     "action":"created",
-    "roomId":"81D8"
+    "roomId":"ABCD"
 }
 ```
 
@@ -24,12 +24,14 @@ After the room is created, the server will **broadcast** back to the host.
 }
 ```
 
-After joining, the server will **broadcast** out the unique playerId
+After joining, the server will **broadcast** back to the host.
 
 ```
 {
-    playerId: 1
+    "action": "joined",
+    "roomId":"ABCD"
 }
+
 ```
 
 # Start Game (Send)
