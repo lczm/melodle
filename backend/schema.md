@@ -62,6 +62,7 @@ If it is the player's turn - the player will go through with playing with the ga
 ```
 {
     action: "recording",
+    roomId: "ABCD"
     playerId: 1,
     audio: blob,
 }
