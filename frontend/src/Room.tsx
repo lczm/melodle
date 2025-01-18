@@ -1,10 +1,19 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useWebSocket } from "./WebSocketContext";
 import { useParams } from "react-router-dom";
+
+enum GameState {
+    LOBBY,  
+    LISTENING,
+    RECORDING,
+    WAITING,
+    END 
+}
 
 function Room() {
   const { roomCode } = useParams();
   const websocket = useWebSocket();
+  const [gameState, setGameState] = useState<GameState>(GameState.LOBBY)
 
   useEffect(() => {
     if (!websocket) {
@@ -17,6 +26,15 @@ function Room() {
     websocket.onmessage = (e) => {
       const res = JSON.parse(e.data);
       console.log("Message from server:", res);
+      const state = "recording"
+      switch (state) {
+        case "turn":
+            setGameState(GameState.WAITING)
+            break;
+        case "recording":
+            setGameState(GameState.RECORDING)
+            break;
+      }
     };
   }, [websocket, roomCode]);
 
@@ -30,8 +48,11 @@ function Room() {
 
   return (
     <div>
-      <h1>Room Code: {roomCode}</h1>
-      <button onClick={handleStart}>Start Game</button>
+        {gameState === GameState.LOBBY && <> <h1>Room Code: {roomCode}</h1>
+        <button onClick={handleStart}>Start Game</button></>}
+        {gameState === GameState.WAITING && <h1>Please wait for your turn...</h1>}
+        {gameState === GameState.RECORDING && <h1>It's your turn</h1>}
+    
     </div>
   );
 }
