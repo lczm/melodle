@@ -14,7 +14,8 @@ function Room() {
   const { roomCode } = useParams();
   const websocket = useWebSocket();
   const [gameState, setGameState] = useState<GameState>(GameState.LOBBY)
-
+  const [playerId, setPlayerId] = useState()
+ 
   useEffect(() => {
     if (!websocket) {
       console.error("WebSocket is not available.");
@@ -29,9 +30,14 @@ function Room() {
       const state = "recording"
       switch (state) {
         case "turn":
+            setPlayerId(res.playerId)
             setGameState(GameState.WAITING)
             break;
         case "recording":
+            if (res.playerId != playerId) {
+                console.log(`It's not your turn. It's ${res.playerId}'s turn`)
+                return
+            }
             setGameState(GameState.RECORDING)
             break;
       }
