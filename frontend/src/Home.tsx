@@ -1,28 +1,29 @@
 import { useState } from "react";
 import "./App.css";
 import { useNavigate } from "react-router-dom";
+import { useWebSocket } from "./WebSocketContext";
 
 function Home() {
   const [code, setCode] = useState("");
   const navigate = useNavigate()
+  const ws = useWebSocket()
+  console.log(ws)
 
   const handleClick = (): void => {
     console.log(code);
     navigate(`/room/${code}`)
   };
   const createRoom = () : void => {
-    const url = "ws://206.189.40.120:8080/ws"  
-    const ws = new WebSocket(url)
-    ws.onopen = () => {
-      ws.send(JSON.stringify({"action": "create"}))
-    }
+    // const url = "ws://206.189.40.120:8080/ws"  
+    // const ws = new WebSocket(url)
+    ws.send(JSON.stringify({"action": "create"}))
+    
     ws.onmessage = (e) => {
       console.log(e.data)
       const res = JSON.parse(e.data)
       if (res.action == "created") {
-        navigate(`/room/${res.roomId}`, { state: {ws}})
+        navigate(`/room/${res.roomId}`)
       }
-
     }
   }
   return <>

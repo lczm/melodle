@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useWebSocket } from "./websocket";
+import { useWebSocket } from "./WebSocketContext";
 import { useParams } from "react-router-dom";
 
 function Room() {
