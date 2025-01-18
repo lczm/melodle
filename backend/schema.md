@@ -51,6 +51,7 @@ After this is processed by the backend, the server will **broadcast**
 {
     action: "turn",
     playerId: 1
+    audio: blob,
 }
 ```
 

@@ -19,6 +19,29 @@ type Room struct {
 	mu      sync.Mutex
 }
 
+// Messages
+// Turn message signals the turn of the next player with given player id..
+// Frontend shall present audio recording to the next player.
+type TurnMsg struct {
+	// Shall be "turn"
+	Action string `json:"action"`
+	// Current Player's Id.
+	PlayerId int `json:"playerId"`
+	// Base64 encoded audio recording MP3 to play to the player
+	Audio string `json:"audio"`
+}
+
+// Recording message is sent by current player (current turn) to submit their recording.
+type RecordingMsg struct {
+	// Shall be "recording"
+	Action string `json:"action"`
+	// Player Id of the player submitting the recording.
+	// Message will be ignored if its not currently the player's turn.
+	PlayerId int `json:"playerId"`
+	// Base64 encoded audio MP3 recording submitted by the player
+	Audio string `json:"audio"`
+}
+
 var (
 	rooms    = make(map[string]*Room)
 	upgrader = websocket.Upgrader{
