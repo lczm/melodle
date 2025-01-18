@@ -20,11 +20,20 @@ function Room() {
   const [playerId, setPlayerId] = useState(0)
   const [audioUrl, setAudioUrl] = useState<null | string>()
 
+  console.log(previousAction)
+  useEffect(() => {
+    if (previousAction != "create") {
+        websocket.send(JSON.stringify({ action: "join", roomId: roomCode }));
+    }
+
+}, [])
+
   useEffect(() => {
     if (!websocket) {
       console.error("WebSocket is not available.");
       return;
     }
+  
 
      // Convert Base64 to a binary Blob
     function base64ToBlob(base64, mimeType) {
@@ -33,10 +42,7 @@ function Room() {
         const byteArray = new Uint8Array(byteNumbers);
         return new Blob([byteArray], { type: mimeType });
       }
-      console.log(previousAction)
-      if (previousAction != "create") {
-          websocket.send(JSON.stringify({ action: "join", roomId: roomCode }));
-    }
+      
 
     websocket.onmessage = (e) => {
       const res = JSON.parse(e.data);
@@ -69,7 +75,7 @@ function Room() {
             break
       }
     };
-  }, [websocket, roomCode]);
+  }, [websocket, roomCode, playerId]);
 
   const handleStart = () => {
     if (!websocket) {
