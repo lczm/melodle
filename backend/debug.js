@@ -4,11 +4,6 @@ window.socket = new WebSocket("ws://localhost:8080/ws");
 // Open connection
 window.socket.addEventListener("open", function (event) {
   console.log("WebSocket connection opened");
-
-  // Send the initial "create" message
-  const message = JSON.stringify({ action: "create" });
-  window.socket.send(message);
-  console.log("Message sent:", message);
 });
 
 // Listen for incoming messages
@@ -25,3 +20,8 @@ window.socket.addEventListener("error", function (event) {
 window.socket.addEventListener("close", function (event) {
   console.log("WebSocket connection closed:", event);
 });
+
+// Send the initial "create" message
+// const message = JSON.stringify({ action: "create" });
+// window.socket.send(message);
+// console.log("Message sent:", message);

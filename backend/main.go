@@ -3,9 +3,11 @@ package main
 import (
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
@@ -15,13 +17,7 @@ type Room struct {
 	ID      string
 	Clients map[*websocket.Conn]bool
 	Ready   map[*websocket.Conn]bool
-	Host    *websocket.Conn
 	mu      sync.Mutex
-}
-
-type Player struct {
-	ID    string `json:"id"`
-	Ready bool   `json:"ready"`
 }
 
 var (
@@ -43,6 +39,15 @@ func createRoom() string {
 		Ready:   make(map[*websocket.Conn]bool),
 	}
 	return id
+}
+
+// fisher yates shuffle
+func shuffleArray(arr []int) {
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	for i := len(arr) - 1; i > 0; i-- {
+		j := r.Intn(i + 1)
+		arr[i], arr[j] = arr[j], arr[i]
+	}
 }
 
 func handleWebSocket(w http.ResponseWriter, r *http.Request) {
@@ -115,33 +120,6 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 				"roomId": roomID,
 			})
 
-		case "ready":
-			room, exists := rooms[msg.RoomID]
-			if !exists {
-				conn.WriteJSON(map[string]string{
-					"action":  "error",
-					"message": "Room not found from ready",
-				})
-				continue
-			}
-
-			fmt.Println(room.Clients)
-
-			room.mu.Lock()
-			room.Ready[conn] = true
-			readyCount := len(room.Ready)
-			totalCount := len(room.Clients)
-			room.mu.Unlock()
-
-			// Broadcast to all
-			for client := range room.Clients {
-				client.WriteJSON(map[string]interface{}{
-					"action":     "readyUpdate",
-					"readyCount": readyCount,
-					"totalCount": totalCount,
-				})
-			}
-
 		case "join":
 			room, exists := rooms[msg.RoomID]
 			if !exists {
@@ -181,34 +159,39 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			}
 
 			room.mu.Lock()
-			isHost := room.Host == conn
-			readyCount := len(room.Ready)
 			totalCount := len(room.Clients)
 			room.mu.Unlock()
 
-			if !isHost {
+			// Anyone can start the game
+			// isHost := room.Host == conn
+			// if !isHost {
+			// 	conn.WriteJSON(map[string]string{
+			// 		"action":  "error",
+			// 		"message": "Only host can start game",
+			// 	})
+			// 	continue
+			// }
+
+			if totalCount != 3 {
 				conn.WriteJSON(map[string]string{
 					"action":  "error",
-					"message": "Only host can start game",
+					"message": "Cannot start game with less than 3 players",
 				})
 				continue
 			}
 
-			// Start the game only if there is 3 players.
-			if readyCount != totalCount {
-				conn.WriteJSON(map[string]string{
-					"action":  "error",
-					"message": "Not all players are ready",
-				})
-				continue
-			}
+			// Create and shuffle the array
+			numbers := []int{1, 2, 3}
+			shuffleArray(numbers)
 
-			// Broad game start to all clients
+			// Broadcast game start to all clients with a random playerId
+			index := 0
 			for client := range room.Clients {
-				client.WriteJSON(map[string]string{
-					"action": "gameStarted",
-					"roomId": msg.RoomID,
+				client.WriteJSON(map[string]interface{}{
+					"action":   "turn",
+					"playerId": numbers[index],
 				})
+				index++
 			}
 		}
 	}
