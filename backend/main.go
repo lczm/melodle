@@ -142,7 +142,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 					"action":     "readyUpdate",
 					"readyCount": readyCount,
 					"totalCount": totalCount,
-					"clients":    room.Clients,
+					// "clients":    room.Clients,
 				})
 			}
 
