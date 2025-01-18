@@ -117,11 +117,6 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 		case "ready":
 			room, exists := rooms[msg.RoomID]
-			fmt.Println("@@@")
-			fmt.Println(msg.RoomID)
-			fmt.Println("@@@")
-			fmt.Println(rooms)
-			fmt.Println("@@@")
 			if !exists {
 				conn.WriteJSON(map[string]string{
 					"action":  "error",
@@ -129,6 +124,8 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 				})
 				continue
 			}
+
+			fmt.Println(room.Clients)
 
 			room.mu.Lock()
 			room.Ready[conn] = true
@@ -142,7 +139,6 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 					"action":     "readyUpdate",
 					"readyCount": readyCount,
 					"totalCount": totalCount,
-					// "clients":    room.Clients,
 				})
 			}
 
