@@ -73,8 +73,10 @@ function Room() {
             break;
         case "challenge":
           setGameState(GameState.GUESSING)
-
-
+          const aud = res.audio
+          const audioBlob = base64ToBlob(aud, "audio/mpeg");
+          const url = URL.createObjectURL(audioBlob);
+          setAudioUrl(url);
           break
         case "end":
             setGameState(GameState.END)
