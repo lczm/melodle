@@ -26,7 +26,9 @@ function Home() {
       }
     }
   }
-  return <>
+  return <> 
+              <h1>Melodle</h1>
+              <br></br>
               <input
                 id="code"
                 required
