@@ -97,13 +97,15 @@ The frontend shall respond with the players of the song.
     action: "guess",
     roomId: "ABCD"
     playerId: 1,
-    guess: strong.
+    guess: string,
 }
 ```
 
 
 ## End
 At the end of the game, the server will send an end message signalling the end of the game:
+- `song` is the actual title of the song
+- `guess` is the guess of the song given by the last player
 ```
 {
     action: "end",
