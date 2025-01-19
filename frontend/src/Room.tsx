@@ -7,6 +7,7 @@ enum GameState {
     LOBBY,  
     LISTENING,
     RECORDING,
+    GUESSING,
     WAITING,
     END 
 }
@@ -69,7 +70,11 @@ function Room() {
                 setGameState(GameState.WAITING)
             }
             break;
+        case "challenge":
+          setGameState(GameState.GUESSING)
 
+
+          break
         case "end":
             setGameState(GameState.END)
             const audioUrls = res.audios.map((audio: string) => {
@@ -134,6 +139,8 @@ function Room() {
         }
     </div>
   );
+  {gameState === GameState.GUESSING && <>
+  </>}
 }
 
 export default Room;
