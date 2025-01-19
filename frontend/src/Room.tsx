@@ -22,6 +22,7 @@ function Room() {
   const [audioUrl, setAudioUrl] = useState<string>("")
   const [audioList, setAudioList] = useState<string[]>([])
   const [guessString, setGuessString] = useState("")
+  const [actualSong, setActualSong] = useState("")
 
   console.log(previousAction)
   useEffect(() => {
@@ -85,6 +86,11 @@ function Room() {
                 return URL.createObjectURL(audioBlob);
             }).reverse();
             setAudioList(audioUrls);
+            const guess = res.guess
+            const song = res.song
+            setGuessString(guess)
+            setActualSong(song)
+
             break
       }
     };
@@ -156,7 +162,8 @@ function Room() {
         </>}
         {gameState === GameState.END && 
             <>
-                <h1>What is the song?</h1>
+                <h1>The song was : {actualSong}</h1>
+                <h2>It was guessed as : {guessString}</h2>
                 <div className="audio-list">
                     {audioList.map((url, index) => (
                         <div key={index}>
@@ -169,8 +176,6 @@ function Room() {
         }
     </div>
   );
-  {gameState === GameState.GUESSING && <>
-  </>}
 }
 
 export default Room;
