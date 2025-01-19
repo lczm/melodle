@@ -21,6 +21,7 @@ function Room() {
   const [playerId, setPlayerId] = useState(0)
   const [audioUrl, setAudioUrl] = useState<string>("")
   const [audioList, setAudioList] = useState<string[]>([])
+  const [guessString, setGuessString] = useState("")
 
   console.log(previousAction)
   useEffect(() => {
@@ -109,6 +110,20 @@ function Room() {
     websocket.send(JSON.stringify(req))
   }
 
+  const handleGuess = () => {
+    if (!websocket) {
+      console.error("WebSocket is not available.")
+      return
+    }
+    const req = {
+      action: "guess",
+      roomId: roomCode,
+      playerId: playerId,
+      guess: guessString
+  }
+    websocket.send(JSON.stringify(req));
+  }
+
   return (
     <div>
         <h2>You are: Player {playerId}</h2>
@@ -123,6 +138,19 @@ function Room() {
             <h1>ur turn</h1>
             <Piano onRecordingComplete={handleSubmitRecording} />
             <audio src={audioUrl} controls></audio>
+        </>}
+        {gameState === GameState.GUESSING &&
+        <>
+          <audio src={audioUrl} controls />
+          <input
+                id="guess"
+                required
+                placeholder="Enter your guess"
+                value={guessString}
+                onChange={(e) => setGuessString(e.target.value)}
+                className="min-w-0 flex-auto rounded-md bg-white/5 px-3.5 py-2 text-base text-white outline outline-1 -outline-offset-1 outline-white/10 placeholder:text-gray-500 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-500 sm:text-sm/6"
+              />
+          <button type="submit" onClick={handleGuess}>Guess!</button>
         </>}
         {gameState === GameState.END && 
             <>
