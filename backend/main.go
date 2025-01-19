@@ -24,11 +24,23 @@ type Room struct {
 	// recordings from players
 	Recordings [][]byte
 	mu         sync.Mutex
+	// Song
+	Song  string
+	Guess string
 }
 
 type Song struct {
 	Title string
 	Audio []byte
+}
+
+// type for incoming message
+type Msg struct {
+	Action   string  `json:"action"`
+	RoomID   string  `json:"roomId"`
+	PlayerId *int    `json:"playerId,omitempty"`
+	Audio    *string `json:"audio,omitempty"`
+	Guess    *string `json:"guess,omitempty"`
 }
 
 var (
@@ -67,35 +79,67 @@ func reverseRecordings(recordings [][]byte) {
 	}
 }
 
-func broadcastEnd(room *Room) {
-	// reverse recordings so that last players recording plays first until the song is playered
-	reverseRecordings(room.Recordings)
-
-	// broadcast end of game with all audio recordings
+func broadcast(room *Room, msg map[string]interface{}) {
 	room.mu.Lock()
 	for client := range room.Clients {
-		client.WriteJSON(map[string]interface{}{
-			"action": "end",
-			"audios": room.Recordings,
-		})
+		client.WriteJSON(msg)
 	}
 	room.mu.Unlock()
 }
 
 // Broadcast turn message to all clients in a room with audio
 func broadcastTurn(room *Room) {
+	nRecordings := len(room.Recordings)
 	// Broadcast game start using first "turn" message
-	room.mu.Lock()
-	for client := range room.Clients {
-		nRecordings := len(room.Recordings)
-		client.WriteJSON(map[string]interface{}{
-			"action":   "turn",
-			"playerId": room.Turns[room.Index],
-			// send last audio track to player to listen
-			"audio": base64.RawStdEncoding.EncodeToString(room.Recordings[nRecordings-1]),
-		})
+	broadcast(room, map[string]interface{}{
+		"action":   "turn",
+		"playerId": room.Turns[room.Index],
+		// send last audio track to player to listen
+		"audio": base64.RawStdEncoding.EncodeToString(room.Recordings[nRecordings-1]),
+	})
+}
+
+// Broadcast guess message to prompt last player to guess
+func broadcastChallenge(room *Room) {
+	nRecordings := len(room.Recordings)
+	broadcast(room, map[string]interface{}{
+		"action":   "challenge",
+		"playerId": room.Turns[room.Index],
+		"audio":    base64.RawStdEncoding.EncodeToString(room.Recordings[nRecordings-1]),
+	})
+}
+
+func broadcastEnd(room *Room) {
+	// reverse recordings so that last players recording plays first until the song is playered
+	reverseRecordings(room.Recordings)
+
+	// broadcast end of game with all audio recordings
+	broadcast(room, map[string]interface{}{
+		"action": "end",
+		"song":   room.Song,
+		"guess":  room.Guess,
+		"audios": room.Recordings,
+	})
+}
+
+// Parse the Play parameters
+func checkPlay(msg *Msg) error {
+	room, exists := rooms[msg.RoomID]
+	if !exists {
+		return fmt.Errorf("Room not found")
 	}
-	room.mu.Unlock()
+
+	if msg.PlayerId == nil {
+		return fmt.Errorf("Expected playerId to be set")
+	}
+
+	// not current players turn ignore recording message
+	turn := room.Turns[room.Index]
+	if *msg.PlayerId != room.Turns[room.Index] {
+		return fmt.Errorf("Not current players turn: got=%d, current=%d", msg.PlayerId, turn)
+	}
+
+	return nil
 }
 
 func handleWebSocket(w http.ResponseWriter, r *http.Request) {
@@ -107,12 +151,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	defer conn.Close()
 
 	for {
-		var msg struct {
-			Action   string  `json:"action"`
-			RoomID   string  `json:"roomId"`
-			PlayerId *int    `json:"playerId,omitempty"`
-			Audio    *string `json:"audio,omitempty"`
-		}
+		var msg Msg
 
 		if err := conn.ReadJSON(&msg); err != nil {
 			log.Printf("Error reading message: %v", err)
@@ -207,7 +246,6 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 			room.mu.Lock()
 			totalCount := len(room.Clients)
-			room.mu.Unlock()
 
 			// Anyone can start the game
 			// isHost := room.Host == conn
@@ -233,32 +271,17 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			shuffleArray(room.Turns)
 
 			// Broadcast game start using first "turn" message with initial song
+			// TODO: pick a random song
 			room.Recordings = append(room.Recordings, songs[0].Audio)
+			room.Song = songs[0].Title
+			room.mu.Unlock()
 			broadcastTurn(room)
 
 		case "recording":
-			room, exists := rooms[msg.RoomID]
-			if !exists {
+			if err := checkPlay(&msg); err != nil {
 				conn.WriteJSON(map[string]string{
 					"action":  "error",
-					"message": "Room not found from recording",
-				})
-				continue
-			}
-
-			if msg.PlayerId == nil {
-				conn.WriteJSON(map[string]string{
-					"action":  "error",
-					"message": "Expected playerId to be set in recording",
-				})
-			}
-
-			// not current players turn ignore recording message
-			turn := room.Turns[room.Index]
-			if *msg.PlayerId != room.Turns[room.Index] {
-				conn.WriteJSON(map[string]string{
-					"action":  "error",
-					"message": fmt.Sprintf("Not current players turn: got=%d, current=%d", msg.PlayerId, turn),
+					"message": err.Error(),
 				})
 			}
 
@@ -277,16 +300,39 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 					"message": "Failed to decode base64 audio recording from user in recording",
 				})
 			}
+			room := rooms[msg.RoomID]
 			room.Recordings = append(room.Recordings, recording)
 
+			// advance to next turn
+			room.Index++
 			if room.Index == len(room.Clients)-1 {
-				// last player has submitted recording
-				broadcastEnd(room)
+				// last player's turn to guess
+				broadcastChallenge(room)
 			} else {
-				// advance to next turn
-				room.Index++
 				broadcastTurn(room)
 			}
+
+		case "guess":
+			if err := checkPlay(&msg); err != nil {
+				conn.WriteJSON(map[string]string{
+					"action":  "error",
+					"message": err.Error(),
+				})
+			}
+
+			if msg.Guess == nil {
+				conn.WriteJSON(map[string]string{
+					"action":  "error",
+					"message": "Expected Guess to be set in guess",
+				})
+			}
+
+			room := rooms[msg.RoomID]
+			room.mu.Lock()
+			room.Guess = *msg.Guess
+			room.mu.Unlock()
+
+			broadcastEnd(room)
 		}
 	}
 }
