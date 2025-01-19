@@ -78,11 +78,37 @@ Once the backend receives this - it will process the data, and call the next pla
 }
 ```
 
-And so on until the last player. Then the server will **broadcast**
+And so on until the last player. 
 
+## Challenge
+Instead of sending a `turn` message, the last player will receive a `challenge` message.
+The frontend should prompt the last player to guess the original song.
+```
+{
+    action: "challenge"
+    playerId: 2,
+    audio: blob,
+}
+```
+
+The frontend shall respond with the players of the song.
+```
+{
+    action: "guess",
+    roomId: "ABCD"
+    playerId: 1,
+    guess: strong.
+}
+```
+
+
+## End
+At the end of the game, the server will send an end message signalling the end of the game:
 ```
 {
     action: "end",
+    song: string,
+    guess: string,
     audios: Array[blob]
 }
 ```
